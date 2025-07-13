@@ -426,6 +426,10 @@ class TrainProcessService:
                 self.l2_data["config_path"]
             )
             l2_generator.merge_json_files(self.l2_data["data_output_base_dir"])
+            
+            # Filter the merged data using ChatGPT
+            l2_generator.filter_merged_data(self.l2_data["data_output_base_dir"])
+            
             # Mark step as completed
             logger.info("Content retention augmentation completed successfully")
             self.progress.mark_step_status(ProcessStep.AUGMENT_CONTENT_RETENTION, Status.COMPLETED)

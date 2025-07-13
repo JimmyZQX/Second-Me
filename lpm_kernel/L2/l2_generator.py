@@ -110,6 +110,9 @@ class L2Generator:
         # Merge JSON files for training
         self.merge_json_files(data_output_base_dir)
         
+        # Filter the merged data using ChatGPT
+        self.filter_merged_data(data_output_base_dir)
+        
         # Release Ollama models from memory after data synthesis is complete
         self._release_ollama_models()
 
@@ -205,6 +208,58 @@ class L2Generator:
         merged_output_path = os.path.join(data_output_base_dir, "merged.json")
         with open(merged_output_path, 'w', encoding='utf-8') as f:
             json.dump(merged_data, f, ensure_ascii=False, indent=2)
+    
+    def filter_merged_data(self, data_output_base_dir: str):
+        """Filter the merged.json data using ChatGPT to improve quality.
+        
+        Args:
+            data_output_base_dir: Directory containing the merged.json file
+        """
+        merged_json_path = os.path.join(data_output_base_dir, "merged.json")
+        
+        if not os.path.exists(merged_json_path):
+            logging.warning(f"Merged data file not found: {merged_json_path}")
+            return
+        
+        try:
+            # Import your judge class
+            from lpm_kernel.L2.merged_data_judge import MergedDataJudge
+            
+            
+            logging.info(f"Starting data filtering")
+            
+            # Get user bio for filtering context - you can customize this
+            user_bio = "User is a software engineer who loves programming and learning new technologies."
+            
+            # Initialize the judge (you'll need to provide API key)
+            # TODO: change to use the API key from user input
+            api_key = "your api key"
+            if not api_key:
+                logging.warning("OpenAI API key not found in environment variables, skipping data filtering")
+                logging.info("To enable data filtering, set OPENAI_API_KEY environment variable")
+                return
+            
+            judge = MergedDataJudge(api_key=api_key, model_name="gpt-4o")
+
+            # Keeping a different output path just for debugging
+            output_path = "resources/L2/data/merged_judge_report.json"
+            keep_ratio = 0.8
+            max_workers = 5
+            
+            # Execute filtering
+            judge.filter_and_score_data_concurrent(
+                merged_json_path=merged_json_path,
+                output_path=output_path,
+                user_bio=user_bio,
+                keep_ratio=keep_ratio,
+                max_workers=max_workers
+            )
+            
+            logging.info(f"Data filtering completed.")
+            
+        except Exception as e:
+            logging.error(f"Error during data filtering: {str(e)}")
+            logging.info("Continuing without data filtering due to error")
     
     def _release_ollama_models(self):
         """Release Ollama models from memory to free up VRAM for training.
