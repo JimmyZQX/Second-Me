@@ -231,13 +231,17 @@ class L2Generator:
             # Get user bio for filtering context - you can customize this
             user_bio = "User is a software engineer who loves programming and learning new technologies."
             
-            # Initialize the judge (you'll need to provide API key)
-            # TODO: change to use the API key from user input
-            api_key = "your api key"
-            if not api_key:
-                logging.warning("OpenAI API key not found in environment variables, skipping data filtering")
-                logging.info("To enable data filtering, set OPENAI_API_KEY environment variable")
+            # Initialize the judge with API key from user configuration
+            from lpm_kernel.api.services.user_llm_config_service import UserLLMConfigService
+            user_llm_config_service = UserLLMConfigService()
+            user_llm_config = user_llm_config_service.get_available_llm()
+            
+            if not user_llm_config or not user_llm_config.chat_api_key:
+                logging.warning("OpenAI API key not found in user configuration, skipping data filtering")
+                logging.info("To enable data filtering, please configure your API key in the UI settings")
                 return
+            
+            api_key = user_llm_config.chat_api_key
             
             judge = MergedDataJudge(api_key=api_key, model_name="gpt-4o")
 
