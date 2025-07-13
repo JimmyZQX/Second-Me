@@ -203,13 +203,6 @@ class MergedDataJudge:
         
         # Sort by score (highest first)
         scored_data.sort(key=lambda x: x['score'], reverse=True)
-
-        # For debugging, save the scored data to a file
-        debug_output_path = "resources/L2/data/scored_data_debug.json"
-        with open(debug_output_path, "w", encoding="utf-8") as f:
-            json.dump(scored_data, f, ensure_ascii=False, indent=2)
-
-        print(f"Scored data saved to {debug_output_path}")
         
         # Keep only the top items
         filtered_data = scored_data[:keep_count]

@@ -242,14 +242,15 @@ class L2Generator:
             judge = MergedDataJudge(api_key=api_key, model_name="gpt-4o")
 
             # Keeping a different output path just for debugging
-            output_path = "resources/L2/data/merged_judge_report.json"
+            # output_path = "resources/L2/data/merged_judge_report.json"
+            # TODO: change to use the keep_ratio from user input
             keep_ratio = 0.8
             max_workers = 5
             
             # Execute filtering
             judge.filter_and_score_data_concurrent(
                 merged_json_path=merged_json_path,
-                output_path=output_path,
+                output_path=merged_json_path,
                 user_bio=user_bio,
                 keep_ratio=keep_ratio,
                 max_workers=max_workers
