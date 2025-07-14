@@ -4,7 +4,7 @@ from lpm_kernel.common.repository.database_session import Base
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Dict, List, Optional
-from lpm_kernel.L1.bio import Bio
+from lpm_kernel.stage2.bio import Bio
 
 
 class L1Version(Base):
@@ -104,7 +104,7 @@ class L1VersionDTO:
 
 @dataclass
 class L1GenerationResult:
-    """L1 generation result data class"""
+    """stage2 generation result data class"""
 
     bio: Bio
     clusters: Dict[str, List]  # {"clusterList": [...]}

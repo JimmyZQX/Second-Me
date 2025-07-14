@@ -8,8 +8,29 @@ from lpm_kernel.common.repository.database_session import DatabaseSession
 
 # Output file mapping for each process step
 output_files = {
-    "extract_dimensional_topics": os.path.join(os.getcwd(), "resources/L2/data_pipeline/raw_data/topics.json"),
-    "map_your_entity_network": os.path.join(os.getcwd(), "resources/L1/graphrag_indexing_output/subjective/entities.parquet"),
+    # Synthesize Your Life Narrative
+    "extract_dimensional_topics": os.path.join(os.getcwd(), "resources/data/stage2/topics/topic.json"),
+    "generate_shades": "From database",  # 特殊处理，从数据库获取
+    "generate_biography": "From database",  # 特殊处理，从数据库获取
+    
+    # Memory Reconstruction
+    "generate_base": os.path.join(os.getcwd(), "resources/data/stage1/final.json"),
+    
+    # Deep Comprehension
+    "bio_qa_generation": os.path.join(os.getcwd(), "resources/data/stage2/processed/stage2_qa.json"),
+    "wiki_data_generation": os.path.join(os.getcwd(), "resources/data/stage2/wiki/wiki_res.json"),
+    "generate_memqa_entity": os.path.join(os.getcwd(), "resources/data/stage2/processed/subjective_entity.json"),
+    "generate_memqa_relation": os.path.join(os.getcwd(), "resources/data/stage2/processed/subjective_relation.json"),
+    "generate_memqa_description": os.path.join(os.getcwd(), "resources/data/stage2/processed/subjective_description.json"),
+    "generate_memqa_diversity": os.path.join(os.getcwd(), "resources/data/stage2/processed/diversity.json"),
+    
+    # Memory Expansion
+    "synthetic_data_generation": os.path.join(os.getcwd(), "resources/data/stage3/synthetic_data_with_notes_answers.json"),
+    "synthetic_no_notes_data_generation": os.path.join(os.getcwd(), "resources/data/stage3/synthetic_data_no_notes_answers.json"),
+    "convert_data": os.path.join(os.getcwd(), "resources/data/merged.json"),
+    
+    # 旧的映射保留，以确保向后兼容
+    "map_your_entity_network": os.path.join(os.getcwd(), "resources/stage2/graphrag_indexing_output/subjective/entities.parquet"),
     "decode_preference_patterns": os.path.join(os.getcwd(), "resources/L2/data/preference.json"),
     "reinforce_identity": os.path.join(os.getcwd(), "resources/L2/data/selfqa.json"),
     "augment_content_retention": os.path.join(os.getcwd(), "resources/L2/data/diversity.json"),
@@ -17,7 +38,7 @@ output_files = {
 
 def query_l1_version_data(version: int) -> dict:
     """
-    Query L1 bio and shades for a given version and return as dict.
+    Query stage2 bio and shades for a given version and return as dict.
     """
     with DatabaseSession.session() as session:
             # Get all data for this version

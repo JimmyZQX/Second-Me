@@ -5,11 +5,11 @@ from datetime import datetime
 import numpy as np
 from flask import Blueprint, jsonify
 
-from lpm_kernel.L1.bio import Bio
-# from lpm_kernel.L1.l1_repository import L1Repository
-from lpm_kernel.L1.l1_generator import L1Generator
-from lpm_kernel.L1.serializers import NotesStorage, NoteSerializer
-from lpm_kernel.L1.utils import save_true_topics
+from lpm_kernel.stage2.bio import Bio
+# from lpm_kernel.stage2.l1_repository import L1Repository
+from lpm_kernel.stage2.l1_generator import L1Generator
+from lpm_kernel.stage2.serializers import NotesStorage, NoteSerializer
+from lpm_kernel.stage2.utils import save_true_topics
 from lpm_kernel.api.common.responses import APIResponse
 from lpm_kernel.common.repository.database_session import DatabaseSession
 from lpm_kernel.kernel.chunk_service import ChunkService
@@ -41,12 +41,12 @@ l1_generator = L1Generator()
 def __store_version(
         session, new_version_number: int, description: str = None
 ) -> L1Version:
-    """Store L1 version information"""
+    """Store stage2 version information"""
     version = L1Version(
         version=new_version_number,
         create_time=datetime.now(),
         status="active",
-        description=description or f"L1 data version {new_version_number}",
+        description=description or f"stage2 data version {new_version_number}",
     )
     session.add(version)
     return version
@@ -129,7 +129,7 @@ def __store_chunk_topics(session, new_version: int, chunk_topics_dict: dict) -> 
 
 
 def store_l1_data(session, l1_data: L1GenerationResult) -> int:
-    """Store L1 data based on L0 data"""
+    """Store stage2 data based on L0 data"""
     try:
         # 1. Get current latest version
         latest_version = (
@@ -158,13 +158,13 @@ def store_l1_data(session, l1_data: L1GenerationResult) -> int:
 
         # 7. Commit transaction
         session.commit()
-        logger.info(f"Successfully stored L1 data version {new_version_number}")
+        logger.info(f"Successfully stored stage2 data version {new_version_number}")
 
         return new_version_number
 
     except Exception as e:
         session.rollback()
-        logger.error(f"Error creating L1 version: {str(e)}")
+        logger.error(f"Error creating stage2 version: {str(e)}")
         raise
 
 
@@ -190,15 +190,15 @@ def serialize_value(value):
 
 @kernel_bp.route("/l1/global/generate", methods=["POST"])
 def generate_l1():
-    """Generate L1 data from L0 data and store"""
+    """Generate stage2 data from L0 data and store"""
     try:
-        # 1. Generate L1 data
+        # 1. Generate stage2 data
         result = generate_l1_from_l0()
 
         if result is None:
-            return jsonify(APIResponse.error("No valid L1 data generated"))
+            return jsonify(APIResponse.error("No valid stage2 data generated"))
 
-        # 2. Store L1 data
+        # 2. Store stage2 data
         with DatabaseSession.session() as session:
             version_number = store_l1_data(session, result)
 
@@ -208,20 +208,20 @@ def generate_l1():
         # 4. return the result
         response_data = {
             "version": version_number,
-            "message": f"L1 data generated and stored successfully with version {version_number}",
+            "message": f"stage2 data generated and stored successfully with version {version_number}",
             "data": serializable_result,
         }
 
         return jsonify(APIResponse.success(data=response_data))
 
     except Exception as e:
-        logger.error(f"Error generating L1: {str(e)}", exc_info=True)
+        logger.error(f"Error generating stage2: {str(e)}", exc_info=True)
         return jsonify(APIResponse.error(str(e)))
 
 
 @kernel_bp.route("/l1/global/versions", methods=["GET"])
 def list_l1_versions():
-    """Get all L1 data versions"""
+    """Get all stage2 data versions"""
     try:
         with DatabaseSession.session() as session:
             versions = session.query(L1Version).order_by(L1Version.version.desc()).all()
@@ -239,13 +239,13 @@ def list_l1_versions():
             return jsonify(APIResponse.success(data=version_list))
 
     except Exception as e:
-        logger.error(f"Error listing L1 versions: {str(e)}", exc_info=True)
+        logger.error(f"Error listing stage2 versions: {str(e)}", exc_info=True)
         return jsonify(APIResponse.error(str(e)))
 
 
 @kernel_bp.route("/l1/global/version/<int:version>", methods=["GET"])
 def get_l1_version(version):
-    """Get specified version of L1 data"""
+    """Get specified version of stage2 data"""
     try:
         with DatabaseSession.session() as session:
             # Get all data for this version
@@ -304,7 +304,7 @@ def get_l1_version(version):
             return jsonify(APIResponse.success(data=data))
 
     except Exception as e:
-        logger.error(f"Error getting L1 version {version}: {str(e)}", exc_info=True)
+        logger.error(f"Error getting stage2 version {version}: {str(e)}", exc_info=True)
         return jsonify(APIResponse.error(str(e)))
 
 
@@ -347,7 +347,7 @@ def get_status_biography():
 
 @kernel_bp.route("/l1/latest/save_topics", methods=["GET"])
 def save_latest_topics():
-    """get the latest L1 topics and save to the pointed directory"""
+    """get the latest stage2 topics and save to the pointed directory"""
     # use the related resources directory
     base_dir = os.path.join(os.getcwd(), "resources/L2/data_pipeline/raw_data")
     os.makedirs(base_dir, exist_ok=True)

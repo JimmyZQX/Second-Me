@@ -5,7 +5,7 @@ import json
 
 import numpy as np
 
-from lpm_kernel.L1.bio import Cluster
+from lpm_kernel.stage2.bio import Cluster
 import logging
 
 

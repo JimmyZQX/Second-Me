@@ -45,7 +45,7 @@ def chat(body: ChatRequest):
     - role_id: str, optional role UUID, if provided will use the role's system_prompt
     - history: List[ChatMessage], message history
     - enable_l0_retrieval: bool, whether to enable L0 knowledge retrieval, default true
-    - enable_l1_retrieval: bool, whether to enable L1 knowledge retrieval, default true
+    - enable_l1_retrieval: bool, whether to enable stage2 knowledge retrieval, default true
     - temperature: float, temperature parameter for randomness, default 0.01
     - max_tokens: int, maximum tokens to generate, default 2000
     """
@@ -140,7 +140,7 @@ def advanced_chat(body: AdvancedChatRequest):
     - max_iterations: int, maximum number of refinement iterations (default: 3)
     - temperature: float, temperature for model generation (default: 0.01)
     - enable_l0_retrieval: bool, whether to enable L0 knowledge retrieval (default: true)
-    - enable_l1_retrieval: bool, whether to enable L1 knowledge retrieval (default: true)
+    - enable_l1_retrieval: bool, whether to enable stage2 knowledge retrieval (default: true)
     
     Response:
     JSON object containing:

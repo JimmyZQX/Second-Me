@@ -4,14 +4,14 @@ from sqlalchemy import desc
 from datetime import datetime
 
 from ..models.l1_model import L1ClusterModel, L1ShadeModel, L1BiographyModel
-from lpm_kernel.L1.bio import Cluster, ShadeInfo, Bio
+from lpm_kernel.stage2.bio import Cluster, ShadeInfo, Bio
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class L1Repository:
-    """L1 data access repository"""
+    """stage2 data access repository"""
 
     def __init__(self, session: Session):
         self._session = session

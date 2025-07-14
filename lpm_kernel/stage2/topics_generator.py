@@ -10,14 +10,14 @@ from openai import OpenAI
 from scipy.cluster.hierarchy import fcluster, linkage
 import numpy as np
 
-from lpm_kernel.L1.bio import Cluster, Memory, Note
-from lpm_kernel.L1.prompt import (
+from lpm_kernel.stage2.bio import Cluster, Memory, Note
+from lpm_kernel.stage2.prompt import (
     TOPICS_TEMPLATE_SYS,
     TOPICS_TEMPLATE_USR,
     SYS_COMB,
     USR_COMB,
 )
-from lpm_kernel.L1.utils import find_connected_components
+from lpm_kernel.stage2.utils import find_connected_components
 from lpm_kernel.api.services.user_llm_config_service import UserLLMConfigService
 from lpm_kernel.configs.logging import get_train_process_logger
 logger = get_train_process_logger()

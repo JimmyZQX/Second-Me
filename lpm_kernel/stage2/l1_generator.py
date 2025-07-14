@@ -1,34 +1,26 @@
 from copy import deepcopy
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Any, List, Optional
-import logging
-import os
+from typing import Dict, Any, List
 
 from openai import OpenAI
 
-from lpm_kernel.L1.bio import (
+from lpm_kernel.stage2.bio import (
     Bio,
-    CONFIDENCE_LEVELS_INT,
     Chat,
     Cluster,
     Memory,
     Note,
-    ShadeInfo,
-    ShadeMergeInfo,
     Todo,
 )
-from lpm_kernel.L1.prompt import (
+from lpm_kernel.stage2.prompt import (
     COMMON_PERSPECTIVE_SHIFT_SYSTEM_PROMPT,
     GLOBAL_BIO_SYSTEM_PROMPT,
     PREFER_LANGUAGE_SYSTEM_PROMPT,
-    SHADE_MERGE_DEFAULT_SYSTEM_PROMPT,
 )
-from lpm_kernel.L1.shade_generator import ShadeGenerator, ShadeMerger
-from lpm_kernel.L1.status_bio_generator import StatusBioGenerator
-from lpm_kernel.L1.topics_generator import TopicsGenerator
+from lpm_kernel.stage2.status_bio_generator import StatusBioGenerator
+from lpm_kernel.stage2.topics_generator import TopicsGenerator
 from lpm_kernel.api.services.user_llm_config_service import UserLLMConfigService
-from lpm_kernel.configs.config import Config
 from lpm_kernel.configs.logging import get_train_process_logger
 
 logger = get_train_process_logger()
@@ -60,7 +52,6 @@ class DailyTimeline:
         self.content = content.strip()
         self.note_ids = noteIds
 
-
     def _desc_(self) -> str:
         """Returns a string representation of the daily timeline.
         
@@ -68,7 +59,6 @@ class DailyTimeline:
             str: Formatted string representation.
         """
         return f"- [{self.date_time}] {self.content}".strip()
-
 
     def to_dict(self) -> Dict[str, Any]:
         """Converts the DailyTimeline object to a dictionary.
@@ -86,7 +76,7 @@ class DailyTimeline:
 
 class MonthlyTimeline:
     def __init__(
-        self, id: int, monthDate: str, title: str, dailyTimelines: List[Dict[str, Any]]
+            self, id: int, monthDate: str, title: str, dailyTimelines: List[Dict[str, Any]]
     ):
         self.id = id
         self.month_date = monthDate
@@ -99,7 +89,6 @@ class MonthlyTimeline:
             key=lambda x: datetime.strptime(x.date_time, DATE_TIME_FORMAT),
         )
 
-
     def _desc_(self) -> str:
         """Returns a string representation of the monthly timeline.
         
@@ -109,7 +98,6 @@ class MonthlyTimeline:
         return f"** {self.month_date} **\n" + "\n".join(
             [daily_timeline._desc_() for daily_timeline in self.daily_timelines]
         )
-
 
     def _preview_(self, preview_num: int = 0) -> str:
         """Generates a preview of the monthly timeline.
@@ -124,7 +112,6 @@ class MonthlyTimeline:
         for daily_timeline in self.daily_timelines[:preview_num]:
             preview_statement += daily_timeline._desc_() + "\n"
         return preview_statement
-
 
     def to_dict(self) -> Dict[str, Any]:
         """Converts the MonthlyTimeline object to a dictionary.
@@ -154,7 +141,6 @@ class EntityWiki:
             else 0
         )
 
-
     def to_dict(self) -> Dict[str, Any]:
         """Converts the EntityWiki object to a dictionary.
         
@@ -176,7 +162,7 @@ class L1Generator:
         self.bio_model_params = {
             "temperature": 0,
             "max_tokens": 2000,
-            "top_p": 0,
+            "top_p": 0.000,
             "frequency_penalty": 0,
             "seed": 42,
             "presence_penalty": 0,
@@ -244,7 +230,7 @@ class L1Generator:
         except Exception as e:
             error_msg = str(e)
             logger.error(f"API Error: {error_msg}")
-            
+
             # Try to fix top_p parameter if needed
             if hasattr(e, 'response') and hasattr(e.response, 'status_code') and e.response.status_code == 400:
                 if self._fix_top_p_param(error_msg):
@@ -255,12 +241,12 @@ class L1Generator:
                         **self.bio_model_params,
                         **kwargs
                     )
-            
+
             # Re-raise the exception
             raise
 
     def __build_message(
-        self, system_prompt: str, user_prompt: str, language: str
+            self, system_prompt: str, user_prompt: str, language: str
     ) -> List[Dict[str, str]]:
         """Builds message for LLM API call.
         
@@ -285,7 +271,6 @@ class L1Generator:
                 }
             )
         return raw_message
-
 
     def _global_bio_generate(self, global_bio: Bio) -> Bio:
         """Generates global biography.
@@ -313,7 +298,6 @@ class L1Generator:
 
         return global_bio
 
-
     def _shift_perspective(self, global_bio: Bio) -> Bio:
         """Shifts the perspective of the biography to second person.
         
@@ -337,7 +321,6 @@ class L1Generator:
         global_bio.content_second_view = global_bio.complete_content(second_view=True)
         return global_bio
 
-
     def _assign_confidence_level(self, global_bio: Bio) -> Bio:
         """Assigns confidence levels to shades in the biography.
         
@@ -356,9 +339,8 @@ class L1Generator:
             shade.confidence_level = level
         return global_bio
 
-
     def gen_global_biography(
-        self, old_profile: Bio, cluster_list: List[Cluster]
+            self, old_profile: Bio, cluster_list: List[Cluster]
     ) -> Bio:
         """Generates the global biography of the user.
         
@@ -373,48 +355,8 @@ class L1Generator:
         global_bio = self._global_bio_generate(global_bio)
         return global_bio
 
-
-    def gen_shade_for_cluster(
-        self,
-        old_memory_list: List[Note],
-        new_memory_list: List[Note],
-        shade_info_list: List[ShadeInfo],
-    )-> Optional[ShadeInfo]:
-        """Generates shade for a cluster.
-        
-        Args:
-            old_memory_list: List of previous notes.
-            new_memory_list: List of new notes.
-            shade_info_list: List of shade information.
-            
-        Returns:
-            Generated shade.
-        """
-        shade_generator = ShadeGenerator()
-
-        shade = shade_generator.generate_shade(
-            old_memory_list=old_memory_list,
-            new_memory_list=new_memory_list,
-            shade_info_list=shade_info_list,
-        )
-        return shade
-
-
-    def merge_shades(self, shade_info_list: List[ShadeMergeInfo]):
-        """Merges multiple shades.
-        
-        Args:
-            shade_info_list: List of shade merge information.
-            
-        Returns:
-            Merged shade result.
-        """
-        shade_merger = ShadeMerger()
-        return shade_merger.merge_shades(shade_info_list)
-
-
     def gen_status_biography(
-        self, cur_time: str, notes: List[Note], todos: List[Todo], chats: List[Chat]
+            self, cur_time: str, notes: List[Note], todos: List[Todo], chats: List[Chat]
     ):
         """Generates the status biography of the user.
         
@@ -430,15 +372,14 @@ class L1Generator:
         status_bio_generator = StatusBioGenerator()
         return status_bio_generator.generate_status_bio(notes, todos, chats)
 
-
     def gen_topics_for_shades(
-        self,
-        old_cluster_list: List[Cluster],
-        old_outlier_memory_list: List[Memory],
-        new_memory_list: List[Memory],
-        cophenetic_distance: float = 1.0,
-        outlier_cutoff_distance: float = 0.5,
-        cluster_merge_distance: float = 0.5,
+            self,
+            old_cluster_list: List[Cluster],
+            old_outlier_memory_list: List[Memory],
+            new_memory_list: List[Memory],
+            cophenetic_distance: float = 1.0,
+            outlier_cutoff_distance: float = 0.5,
+            cluster_merge_distance: float = 0.5,
     ):
         """Generates topics for shades.
         
@@ -462,7 +403,6 @@ class L1Generator:
             outlier_cutoff_distance,
             cluster_merge_distance,
         )
-
 
     def generate_topics(self, notes_list: List[Note]):
         """Generates topics from a list of notes.

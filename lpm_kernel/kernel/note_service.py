@@ -2,7 +2,7 @@
 import logging
 from typing import List
 
-from lpm_kernel.L1.bio import Note
+from lpm_kernel.stage2.bio import Note
 from lpm_kernel.common.repository.database_session import DatabaseSession
 from lpm_kernel.file_data.document_repository import DocumentRepository
 from lpm_kernel.models.l1 import (

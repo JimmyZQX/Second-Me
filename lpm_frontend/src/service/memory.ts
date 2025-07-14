@@ -20,6 +20,7 @@ export interface MemoryFile {
   summary: string | null;
   url: string;
   user_description: string;
+  is_trained: boolean;
 }
 
 interface MetaData {
@@ -54,9 +55,9 @@ export const uploadMemory = (formData: FormData) => {
   });
 };
 
-export const deleteMemory = (name: string) => {
+export const deleteMemory = (id: string) => {
   return Request<EmptyResponse>({
     method: 'delete',
-    url: `/api/memories/file/${name}`
+    url: `/api/memories/file/id/${id}`
   });
 };

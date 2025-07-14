@@ -14,6 +14,7 @@ import type { ChatRequest } from '@/hooks/useSSE';
 import { useSSE } from '@/hooks/useSSE';
 import { useLoadInfoStore } from '@/store/useLoadInfoStore';
 import { getTrainingParams } from '@/service/train';
+import { getActiveCloudModel, getCurrentModelDisplayNameAsync } from '@/utils/cloudModelUtils';
 
 // Use the Message type directly from storage
 type Message = StorageMessage;
@@ -47,40 +48,22 @@ export default function PlaygroundChat() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [modelType, setModelType] = useState<ModelType | undefined>(undefined);
+  const [currentModelName, setCurrentModelName] = useState<string>('Loading...');
 
   const originPrompt = useMemo(() => {
-    const name = loadInfo?.name || 'user';
+    // const name = loadInfo?.name || 'user';
 
-    if (modelType === 'chat') {
-      return `You are ${name}'s "Second Me", which is a personalized AI created by ${name}. You can help ${name} answer questions based on your understanding of ${name}'s background information and past records.`;
-    }
+    return `Your mission is to help others with your background information and past memory by providing relevant answers and precise solutions.
 
-    if (modelType === 'thinking') {
-      return `You are ${name}'s "Second Me", and you are currently in conversation with ${name}.
-            Your task is to help ${name} answer relevant questions based on your understanding of ${name}'s background information and past records.
-            Please ensure your answers meet ${name}'s needs and provide precise solutions based on their historical information and personal preferences.
-
-            When thinking, please follow these steps and output the results clearly in order:
-                1. Consider the connection between questions and background: Review ${name}'s past records and personal information, analyzing the connections between their questions and these records.
-                2. Derive answers to questions: Based on ${name}'s historical data and specific question content, conduct reasoning and analysis to ensure accuracy and relevance of answers.
-                3. Generate high-quality responses: Distill answers that best meet ${name}'s needs and present them systematically with high information density.
-
-            Your output format must follow the following structure:
-
-            <think>  
-            As "Second Me"'s thinking process, analyze the relationships between ${name}'s background information, historical records and the questions raised, deriving reasonable solution approaches.  
-            </think>
-            <answer>  
-            This is the final answer for ${name}, ensuring the response is precise and meets their needs, while being systematic and information-dense.
-            </answer>`;
-    }
-
-    return '';
+    When thinking, please follow these steps in order and present the results clearly:
+      1. Reflect on how the question relates to your background: Go through your memory and personal info, analyzing the connection between the question and your records.
+      2. Derive the answer to the question: Use your historical data and the question's details to ensure the answer is accurate and relevant.
+      3. Generate a high-quality response: Produce the best solution that meets the person's needs, presented systematically with high information density.`;
   }, [loadInfo, modelType]);
   const originSettings = useMemo(() => {
     return {
-      enableL0Retrieval: true,
-      enableL1Retrieval: true,
+      enableL0Retrieval: false,
+      enableL1Retrieval: false,
       enableHelperModel: false,
       selectedModel: 'ollama',
       apiKey: 'http://localhost:11434',
@@ -117,6 +100,26 @@ export default function PlaygroundChat() {
       .catch((error) => {
         console.error(error.message);
       });
+  }, []);
+
+  // Get current model display name
+  useEffect(() => {
+    const updateModelName = async () => {
+      try {
+        const modelName = await getCurrentModelDisplayNameAsync();
+        setCurrentModelName(modelName);
+      } catch (error) {
+        console.error('Failed to get current model name:', error);
+        setCurrentModelName('Model Status Unknown');
+      }
+    };
+
+    updateModelName();
+
+    // Update model name every 5 seconds to reflect service changes
+    const interval = setInterval(updateModelName, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const scrollToBottom = () => {
@@ -273,7 +276,14 @@ export default function PlaygroundChat() {
       stream: true
     };
 
-    await sendStreamMessage(chatRequest);
+    // Check if a cloud model is active
+    const cloudModel = getActiveCloudModel();
+
+    if (cloudModel) {
+      await sendStreamMessage(chatRequest, true, cloudModel.deployed_model);
+    } else {
+      await sendStreamMessage(chatRequest);
+    }
   };
 
   // Listen for streamContent changes to update messages
@@ -331,7 +341,12 @@ export default function PlaygroundChat() {
       {/* Main chat area */}
       <div className="flex-1 flex flex-col bg-white">
         <div className="flex items-center justify-between px-6 py-3 border-b">
-          <h2 className="text-lg font-semibold">Chat with Second Me</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">Chat with Second Me</h2>
+            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              {currentModelName}
+            </span>
+          </div>
           <button className="text-sm text-gray-600 hover:text-gray-900" onClick={handleClearChat}>
             Clear Chat
           </button>

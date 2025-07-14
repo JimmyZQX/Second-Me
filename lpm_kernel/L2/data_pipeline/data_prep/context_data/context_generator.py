@@ -12,7 +12,7 @@ import traceback
 from openai import OpenAI
 from tqdm import tqdm
 
-from lpm_kernel.L1.bio import Note
+from lpm_kernel.stage2.bio import Note
 from lpm_kernel.L2.data_pipeline.data_prep.context_data.context_config import enc, needs_dict, min_needs_count, max_needs_count
 from lpm_kernel.L2.data_pipeline.data_prep.context_data.prompt import (
     needs_prompt_v1, context_enhance_prompt_zh, context_enhance_prompt_en,

@@ -69,7 +69,7 @@ class L0KnowledgeRetriever:
 
 
 class L1KnowledgeRetriever:
-    """L1 knowledge retriever"""
+    """stage2 knowledge retriever"""
 
     def __init__(
         self,
@@ -78,7 +78,7 @@ class L1KnowledgeRetriever:
         max_shades: int = 3,
     ):
         """
-        init L1 knowledge retriever
+        init stage2 knowledge retriever
 
         Args:
             embedding_service: Embedding service instance
@@ -91,7 +91,7 @@ class L1KnowledgeRetriever:
 
     def retrieve(self, query: str) -> str:
         """
-        search related L1 shades
+        search related stage2 shades
 
         Args:
             query: query content
@@ -153,7 +153,7 @@ class L1KnowledgeRetriever:
             return "\n\n".join(shade_parts)
 
         except Exception as e:
-            logger.error(f"L1 knowledge retrieval failed: {str(e)}")
+            logger.error(f"stage2 knowledge retrieval failed: {str(e)}")
             return ""
 
 

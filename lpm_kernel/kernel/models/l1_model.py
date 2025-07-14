@@ -3,11 +3,11 @@ from sqlalchemy.orm import relationship
 from lpm_kernel.common.repository.database_session import Base
 from datetime import datetime
 from typing import List, Dict, Optional
-from lpm_kernel.L1.bio import Bio, Cluster, ShadeInfo
+from lpm_kernel.stage2.bio import Bio, Cluster, ShadeInfo
 
 
 class L1ClusterModel(Base):
-    """L1 layer clustering result model"""
+    """stage2 layer clustering result model"""
 
     __tablename__ = "l1_clusters"
 
@@ -41,7 +41,7 @@ class L1ClusterModel(Base):
 
 
 class L1ShadeModel(Base):
-    """L1 layer feature information model"""
+    """stage2 layer feature information model"""
 
     __tablename__ = "l1_shades"
 
@@ -93,7 +93,7 @@ class L1ShadeModel(Base):
 
 
 class L1BiographyModel(Base):
-    """L1 layer biography model"""
+    """stage2 layer biography model"""
 
     __tablename__ = "l1_biographies"
 

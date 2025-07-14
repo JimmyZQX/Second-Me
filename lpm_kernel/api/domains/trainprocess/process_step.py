@@ -10,12 +10,21 @@ class ProcessStep(Enum):
     CHUNK_DOCUMENT = "process_chunks"
     CHUNK_EMBEDDING = "chunk_embedding"
     EXTRACT_DIMENSIONAL_TOPICS = "extract_dimensional_topics"
+    GENERATE_SHADES = "generate_shades"
     GENERATE_BIOGRAPHY = "generate_biography"
     MODEL_DOWNLOAD = "model_download"
-    MAP_ENTITY_NETWORK = "map_your_entity_network"
-    DECODE_PREFERENCE_PATTERNS = "decode_preference_patterns"
-    REINFORCE_IDENTITY = "reinforce_identity"
-    AUGMENT_CONTENT_RETENTION = "augment_content_retention"
+
+    GENERATE_BASE = "generate_base"
+    BIO_QA_GENERATION = "bio_qa_generation"
+    WIKI_DATA_GENERATION = "wiki_data_generation"
+    GENERATE_MEMQA_ENTITY = "generate_memqa_entity"
+    GENERATE_MEMQA_RELATION = "generate_memqa_relation"
+    GENERATE_MEMQA_DESCRIPTION = "generate_memqa_description"
+    GENERATE_MEMQA_DIVERSITY = "generate_memqa_diversity"
+    SYNTHETIC_DATA_GENERATION = "synthetic_data_generation"
+    SYNTHETIC_NO_NOTES_DATA_GENERATION = "synthetic_no_notes_data_generation"
+    CONVERT_DATA = "convert_data"
+
     TRAIN = "train"
     MERGE_WEIGHTS = "merge_weights"
     CONVERT_MODEL = "convert_model"
@@ -30,16 +39,23 @@ class ProcessStep(Enum):
             cls.CHUNK_DOCUMENT,
             cls.CHUNK_EMBEDDING,
             cls.EXTRACT_DIMENSIONAL_TOPICS,
+            cls.GENERATE_SHADES,
             cls.GENERATE_BIOGRAPHY,
-            cls.MAP_ENTITY_NETWORK,
-            cls.DECODE_PREFERENCE_PATTERNS,
-            cls.REINFORCE_IDENTITY,
-            cls.AUGMENT_CONTENT_RETENTION,
+            cls.GENERATE_BASE,
+            cls.BIO_QA_GENERATION,
+            cls.WIKI_DATA_GENERATION,
+            cls.GENERATE_MEMQA_ENTITY,
+            cls.GENERATE_MEMQA_RELATION,
+            cls.GENERATE_MEMQA_DESCRIPTION,
+            cls.GENERATE_MEMQA_DIVERSITY,
+            cls.SYNTHETIC_DATA_GENERATION,
+            cls.SYNTHETIC_NO_NOTES_DATA_GENERATION,
+            cls.CONVERT_DATA,
             cls.TRAIN,
             cls.MERGE_WEIGHTS,
             cls.CONVERT_MODEL,
         ]
-        
+
     def get_method_name(self) -> str:
         """Get the corresponding method name for this step"""
         return self.value

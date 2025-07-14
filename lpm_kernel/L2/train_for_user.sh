@@ -90,7 +90,7 @@ python lpm_kernel/L2/train.py \
   --seed 42 \
   --model_name_or_path "${MODEL_BASE_PATH}" \
   --user_name "${USER_NAME}" \
-  --dataset_name "resources/L2/data/merged.json" \
+  --dataset_name "resources/data/merged.json" \
   --chat_template_format "chatml" \
   --add_special_tokens False \
   --append_concat_token False \

@@ -26,21 +26,47 @@ const ThinkingModelModal = (props: IProps) => {
   }, [open]);
 
   useEffect(() => {
-    setThinkingModelParams(thinkingModelConfig);
+    // If backend returned data
+    if (thinkingModelConfig) {
+      const updatedParams = { ...thinkingModelConfig };
+
+      // Check fields, if null/undefined then set default values
+      if (
+        updatedParams.thinking_model_name === null ||
+        updatedParams.thinking_model_name === undefined
+      ) {
+        updatedParams.thinking_model_name = 'deepseek-reasoner';
+      }
+
+      if (
+        updatedParams.thinking_endpoint === null ||
+        updatedParams.thinking_endpoint === undefined
+      ) {
+        updatedParams.thinking_endpoint = 'https://api.deepseek.com';
+      }
+
+      setThinkingModelParams(updatedParams);
+    } else {
+      // Set complete default values when no configuration exists
+      setThinkingModelParams({
+        thinking_model_name: 'deepseek-reasoner',
+        thinking_endpoint: 'https://api.deepseek.com',
+        thinking_api_key: ''
+      });
+    }
   }, [thinkingModelConfig]);
 
   const handleUpdate = () => {
-    const thinkingConfigComplete =
-      !!thinkingModelParams.thinking_model_name &&
-      !!thinkingModelParams.thinking_api_key &&
-      !!thinkingModelParams.thinking_endpoint;
+    // 只检查 model_name 和 endpoint 是否存在，允许 api_key 为空
+    const requiredFieldsComplete =
+      !!thinkingModelParams.thinking_model_name && !!thinkingModelParams.thinking_endpoint;
 
-    if (!thinkingConfigComplete) {
-      message.error('Please fill in all thinking model configuration fields');
-
+    if (!requiredFieldsComplete) {
+      message.error('Model Name and API Endpoint are required');
       return;
     }
 
+    // 始终保存当前值，即使 API Key 为空
     updateThinkingConfig(thinkingModelParams)
       .then((res) => {
         if (res.data.code == 0) {

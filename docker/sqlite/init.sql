@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS chunk (
 CREATE INDEX IF NOT EXISTS idx_document_id ON chunk(document_id);
 CREATE INDEX IF NOT EXISTS idx_has_embedding ON chunk(has_embedding);
 
--- L1 Version Table
+-- stage2 Version Table
 CREATE TABLE IF NOT EXISTS l1_versions (
     version INTEGER PRIMARY KEY,
     create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS l1_versions (
     description VARCHAR(500)
 );
 
--- L1 Bio Table
+-- stage2 Bio Table
 CREATE TABLE IF NOT EXISTS l1_bios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     version INTEGER NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS l1_bios (
     FOREIGN KEY (version) REFERENCES l1_versions(version)
 );
 
--- L1 Shade Table
+-- stage2 Shade Table
 CREATE TABLE IF NOT EXISTS l1_shades (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     version INTEGER NOT NULL,
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS l1_shades (
     FOREIGN KEY (version) REFERENCES l1_versions(version)
 );
 
--- L1 Cluster Table
+-- stage2 Cluster Table
 CREATE TABLE IF NOT EXISTS l1_clusters (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     version INTEGER NOT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS l1_clusters (
     FOREIGN KEY (version) REFERENCES l1_versions(version)
 );
 
--- L1 Chunk Topic Table
+-- stage2 Chunk Topic Table
 CREATE TABLE IF NOT EXISTS l1_chunk_topics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     version INTEGER NOT NULL,
@@ -136,6 +136,7 @@ CREATE TABLE IF NOT EXISTS memories (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status TEXT CHECK(status IN ('active', 'deleted')) NOT NULL DEFAULT 'active',
+    is_trained BOOLEAN NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
 );
 

@@ -9,7 +9,7 @@ import os
 
 from openai import OpenAI
 
-from lpm_kernel.L1.bio import Note
+from lpm_kernel.stage2.bio import Note
 from lpm_kernel.L2.data import L2DataProcessor
 import yaml
 import logging

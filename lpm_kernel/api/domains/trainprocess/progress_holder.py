@@ -38,12 +38,21 @@ class TrainProgressHolder:
             ProcessStep.CHUNK_EMBEDDING: "activating_the_memory_matrix",
 
             ProcessStep.EXTRACT_DIMENSIONAL_TOPICS: "synthesize_your_life_narrative",
+            ProcessStep.GENERATE_SHADES: "synthesize_your_life_narrative",
             ProcessStep.GENERATE_BIOGRAPHY: "synthesize_your_life_narrative",
-            ProcessStep.MAP_ENTITY_NETWORK: "synthesize_your_life_narrative",
-
-            ProcessStep.DECODE_PREFERENCE_PATTERNS: "prepare_training_data_for_deep_comprehension",
-            ProcessStep.REINFORCE_IDENTITY: "prepare_training_data_for_deep_comprehension",
-            ProcessStep.AUGMENT_CONTENT_RETENTION: "prepare_training_data_for_deep_comprehension",
+            
+            ProcessStep.GENERATE_BASE: "memory_reconstruction",
+            
+            ProcessStep.BIO_QA_GENERATION: "deep_comprehension",
+            ProcessStep.WIKI_DATA_GENERATION: "deep_comprehension",
+            ProcessStep.GENERATE_MEMQA_ENTITY: "deep_comprehension",
+            ProcessStep.GENERATE_MEMQA_RELATION: "deep_comprehension",
+            ProcessStep.GENERATE_MEMQA_DESCRIPTION: "deep_comprehension",
+            ProcessStep.GENERATE_MEMQA_DIVERSITY: "deep_comprehension",
+            
+            ProcessStep.SYNTHETIC_DATA_GENERATION: "memory_expansion",
+            ProcessStep.SYNTHETIC_NO_NOTES_DATA_GENERATION: "memory_expansion",
+            ProcessStep.CONVERT_DATA: "memory_expansion",
 
             ProcessStep.TRAIN: "training_to_create_second_me",
             ProcessStep.MERGE_WEIGHTS: "training_to_create_second_me",
@@ -59,6 +68,7 @@ class TrainProgressHolder:
                 with open(self.progress_file, "r") as f:
                     saved_progress = json.load(f)
                     self.progress.data = saved_progress
+                    logger.debug(self.progress.data)
                     
                     self.progress.stage_map = {}
                     for stage in self.progress.data["stages"]:
@@ -113,8 +123,11 @@ class TrainProgressHolder:
     def _save_progress(self):
         """Save progress"""
         progress_dict = self.progress.to_dict()
-        with open(self.progress_file, "w") as f:
-            json.dump(progress_dict, f, indent=2)
+        try:
+            with open(self.progress_file, "w") as f:
+                json.dump(progress_dict, f, indent=2)
+        except Exception as e:
+            logger.error(f"Failed to save progress to {self.progress_file}: {str(e)}", exc_info=True)
 
     def is_step_completed(self, step: ProcessStep) -> bool:
         """Check if a step is completed"""
@@ -137,6 +150,7 @@ class TrainProgressHolder:
 
     def reset_progress(self):
         """Reset all progress"""
+        logger.info(f"Resetting progress for model: {self.progress_file}")
         self.progress = TrainProgress()
         self._save_progress()
 

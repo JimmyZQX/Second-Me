@@ -131,7 +131,7 @@ class KnowledgeEnhancedStrategy(SystemPromptStrategy):
                 if l0_knowledge:
                     knowledge_sections.append(f"Reference knowledge:\n{l0_knowledge}")
             
-            # Retrieve L1 knowledge if enabled
+            # Retrieve stage2 knowledge if enabled
             if enable_l1_retrieval:
                 l1_knowledge = default_l1_retriever.retrieve(user_message)
                 if l1_knowledge:

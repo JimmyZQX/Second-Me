@@ -1,42 +1,44 @@
-from typing import Dict, List, Any, Optional
 import json
 import re
 import traceback
+from typing import List, Optional, Dict, Any
 
-from openai import OpenAI
 import numpy as np
+from openai import OpenAI
 
-from lpm_kernel.L1.bio import (
-    Cluster,
-    Note,
-    ShadeInfo,
+from lpm_kernel.api.domains.kernel.routes import l1_generator
+from lpm_kernel.api.services.user_llm_config_service import UserLLMConfigService
+from lpm_kernel.base.database_operate import store_bio, store_shades, extract_notes_from_documents, store_version, store_clusters
+from lpm_kernel.common.repository.database_session import DatabaseSession
+from lpm_kernel.configs.logging import get_train_process_logger
+from lpm_kernel.file_data.document_service import document_service
+from lpm_kernel.kernel.l0_base import get_preferred_language
+from lpm_kernel.models.l1 import L1Shade
+from lpm_kernel.stage2.bio import Note, Bio, ShadeInfo, ShadeMergeInfo, ShadeMergeResponse
+from lpm_kernel.stage2.bio import (
     ShadeTimeline,
-    ShadeMergeInfo,
-    ShadeMergeResponse,
 )
-from lpm_kernel.L1.prompt import (
-    PREFER_LANGUAGE_SYSTEM_PROMPT,
+from lpm_kernel.stage2.prompt import (
     SHADE_INITIAL_PROMPT,
     PERSON_PERSPECTIVE_SHIFT_V2_PROMPT,
     SHADE_MERGE_PROMPT,
     SHADE_IMPROVE_PROMPT,
-    SHADE_MERGE_DEFAULT_SYSTEM_PROMPT,
 )
-from lpm_kernel.api.services.user_llm_config_service import UserLLMConfigService
-from lpm_kernel.configs.config import Config
+from lpm_kernel.stage2.prompt import (
+    SHADE_MERGE_DEFAULT_SYSTEM_PROMPT,
+    PREFER_LANGUAGE_SYSTEM_PROMPT
+)
 
-from lpm_kernel.api.common.script_executor import ScriptExecutor
-
-from lpm_kernel.configs.logging import get_train_process_logger
 logger = get_train_process_logger()
+
 
 class ShadeGenerator:
     def __init__(self):
-        self.preferred_language = "en"
+        self.preferred_language = get_preferred_language()
         self.model_params = {
             "temperature": 0,
             "max_tokens": 3000,
-            "top_p": 0,
+            "top_p": 0.000,
             "frequency_penalty": 0,
             "seed": 42,
             "presence_penalty": 0,
@@ -53,7 +55,7 @@ class ShadeGenerator:
                 base_url=self.user_llm_config.chat_endpoint,
             )
             self.model_name = self.user_llm_config.chat_model_name
-        self._top_p_adjusted = False  # Flag to track if top_p has been adjusted
+        self._top_p_adjusted = False
 
     def _fix_top_p_param(self, error_message: str) -> bool:
         """Fixes the top_p parameter if an API error indicates it's invalid.
@@ -104,7 +106,7 @@ class ShadeGenerator:
         except Exception as e:
             error_msg = str(e)
             logger.error(f"API Error: {error_msg}")
-            
+
             # Try to fix top_p parameter if needed
             if hasattr(e, 'response') and hasattr(e.response, 'status_code') and e.response.status_code == 400:
                 if self._fix_top_p_param(error_msg):
@@ -115,7 +117,7 @@ class ShadeGenerator:
                         **self.model_params,
                         **kwargs
                     )
-            
+
             # Re-raise the exception
             raise
 
@@ -144,7 +146,6 @@ class ShadeGenerator:
             )
         return raw_message
 
-
     def __add_second_view_info(self, shade_info: ShadeInfo) -> ShadeInfo:
         """Adds second-person perspective information to the shade info.
         
@@ -155,13 +156,13 @@ class ShadeGenerator:
             Updated ShadeInfo object with second-person perspective.
         """
         user_prompt = f"""Domain Name: {shade_info.name}
-Domain Description: {shade_info.desc_third_view}
-Domain Content: {shade_info.content_third_view}
-Domain Timelines: 
-{
-    "-".join([f"{timeline.create_time}, {timeline.desc_third_view}, {timeline.ref_memory_id}" for timeline in shade_info.timelines if timeline.is_new])
-}
-"""
+        Domain Description: {shade_info.desc_third_view}
+        Domain Content: {shade_info.content_third_view}
+        Domain Timelines: 
+        {
+        "-".join([f"{timeline.create_time}, {timeline.desc_third_view}, {timeline.ref_memory_id}" for timeline in shade_info.timelines if timeline.is_new])
+        }
+        """
         shift_perspective_message = self._build_message(
             PERSON_PERSPECTIVE_SHIFT_V2_PROMPT, user_prompt
         )
@@ -169,7 +170,7 @@ Domain Timelines:
         content = response.choices[0].message.content
         shift_pattern = r"\{.*\}"
         shift_perspective_result = self.__parse_json_response(content, shift_pattern)
-        
+
         # Check if result is None and provide default values to avoid TypeError
         if shift_perspective_result is None:
             logger.warning(f"Failed to parse perspective shift result, using default values: {content}")
@@ -179,14 +180,13 @@ Domain Timelines:
                 "domainContent": shade_info.content_third_view,
                 "domainTimeline": []
             }
-            
+
         # Now it's safe to pass shift_perspective_result as kwargs
         shade_info.add_second_view(**shift_perspective_result)
         return shade_info
 
-
     def __parse_json_response(
-        self, content: str, pattern: str, default_res: dict = None
+            self, content: str, pattern: str, default_res: dict = None
     ) -> Dict[str, Any]:
         """Parses JSON response from LLM output.
         
@@ -209,7 +209,6 @@ Domain Timelines:
             return default_res
         return json_res
 
-
     def __shade_initial_postprocess(self, content: str) -> Optional[ShadeInfo]:
         """Processes the initial shade generation response.
         
@@ -224,7 +223,7 @@ Domain Timelines:
 
         if not shade_raw_info:
             logger.error(f"Failed to parse the shade generate result: {content}")
-            return {}  # Return an empty dictionary
+            return None  # Return an empty dictionary
 
         logger.info(f"Shade Generate Result: {shade_raw_info}")
 
@@ -241,7 +240,6 @@ Domain Timelines:
         ]
         raw_shade_info = self.__add_second_view_info(raw_shade_info)
         return raw_shade_info
-
 
     def _initial_shade_process(self, new_memory_list: List[Note]) -> Optional[ShadeInfo]:
         """Processes the initial shade generation from new memories.
@@ -262,9 +260,8 @@ Domain Timelines:
         logger.info(f"Shade Generate Result: {content}")
         return self.__shade_initial_postprocess(content)
 
-
     def _merge_shades_info(
-        self, old_memory_list: List[Note], shade_info_list: List[ShadeInfo]
+            self, old_memory_list: List[Note], shade_info_list: List[ShadeInfo]
     ) -> ShadeInfo:
         """Merges multiple shades into a single shade.
         
@@ -287,7 +284,6 @@ Domain Timelines:
         content = response.choices[0].message.content
         logger.info(f"Shade Generate Result: {content}")
         return self.__shade_merge_postprocess(content)
-
 
     def __shade_merge_postprocess(self, content: str) -> ShadeInfo:
         """Processes the shade merging response.
@@ -314,14 +310,12 @@ Domain Timelines:
             descThirdView=shade_merge_info.get("newInterestDesc", ""),
             contentThirdView=shade_merge_info.get("newInterestContent", ""),
         )
-
         merged_shade_info.timelines = [
             ShadeTimeline.from_raw_format(timeline)
             for timeline in shade_merge_info.get("newInterestTimelines", [])
         ]
         merged_shade_info = self.__add_second_view_info(merged_shade_info)
         return merged_shade_info
-
 
     def __shade_improve_postprocess(self, old_shade: ShadeInfo, content: str) -> ShadeInfo:
         """Processes the shade improvement response.
@@ -346,9 +340,8 @@ Domain Timelines:
         shade_info = self.__add_second_view_info(old_shade)
         return shade_info
 
-
     def _improve_shade_info(
-        self, new_memory_list: List[Note], old_shade_info: ShadeInfo
+            self, new_memory_list: List[Note], old_shade_info: ShadeInfo
     ) -> ShadeInfo:
         """Improves existing shade information with new memories.
         
@@ -364,23 +357,22 @@ Domain Timelines:
         )
 
         user_prompt = f""" Original Shade Info:
-{old_shade_info.to_str()}
+        {old_shade_info.to_str()}
 
-Recent Memories:
-{recent_memories_str}
-"""
+        Recent Memories:
+        {recent_memories_str}
+        """
         shade_improve_message = self._build_message(SHADE_IMPROVE_PROMPT, user_prompt)
         response = self._call_llm_with_retry(shade_improve_message)
         content = response.choices[0].message.content
         logger.info(f"Shade Generate Result: {content}")
         return self.__shade_improve_postprocess(old_shade_info, content)
 
-
     def generate_shade(
-        self,
-        old_memory_list: List[Note],
-        new_memory_list: List[Note],
-        shade_info_list: List[ShadeInfo],
+            self,
+            old_memory_list: List[Note],
+            new_memory_list: List[Note],
+            shade_info_list: List[ShadeInfo],
     ) -> Optional[ShadeInfo]:
         """Generates or updates a shade based on memories.
         
@@ -401,7 +393,7 @@ Recent Memories:
         logger.warning(f"shade_info_list: {shade_info_list}")
         logger.warning(f"old_memory_list: {old_memory_list}")
         logger.warning(f"new_memory_list: {new_memory_list}")
-        
+
         if not (shade_info_list or old_memory_list):
             logger.info(
                 f"Shades initial Process! Current shade have {len(new_memory_list)} memories!"
@@ -446,19 +438,18 @@ class ShadeMerger:
                 base_url=self.user_llm_config.chat_endpoint,
             )
             self.model_name = self.user_llm_config.chat_model_name
-        
+
         self.model_params = {
             "temperature": 0,
             "max_tokens": 3000,
-            "top_p": 0,
+            "top_p": 0.000,
             "frequency_penalty": 0,
             "seed": 42,
             "presence_penalty": 0,
             "timeout": 45,
         }
-        self.preferred_language = "en"
+        self.preferred_language = get_preferred_language()
         self._top_p_adjusted = False  # Flag to track if top_p has been adjusted
-
 
     def _fix_top_p_param(self, error_message: str) -> bool:
         """Fixes the top_p parameter if an API error indicates it's invalid.
@@ -509,7 +500,7 @@ class ShadeMerger:
         except Exception as e:
             error_msg = str(e)
             logger.error(f"API Error: {error_msg}")
-            
+
             # Try to fix top_p parameter if needed
             if hasattr(e, 'response') and hasattr(e.response, 'status_code') and e.response.status_code == 400:
                 if self._fix_top_p_param(error_msg):
@@ -520,7 +511,7 @@ class ShadeMerger:
                         **self.model_params,
                         **kwargs
                     )
-            
+
             # Re-raise the exception
             raise
 
@@ -544,13 +535,12 @@ class ShadeMerger:
             ]
         )
 
-        return f"""Shades List:
-{shades_str}
-"""
-
+        return f"""
+        Shades List:{shades_str}
+        """
 
     def _calculate_merged_shades_center_embed(
-        self, shades: List[ShadeMergeInfo]
+            self, shades: List[ShadeMergeInfo]
     ) -> List[float]:
         """Calculates the center embedding for merged shades.
         
@@ -585,7 +575,6 @@ class ShadeMerger:
         new_center_embedding = total_embedding / total_cluster_size
         return new_center_embedding.tolist()
 
-
     def _build_message(self, system_prompt: str, user_prompt: str) -> List[Dict[str, str]]:
         """Builds the message structure for the LLM API.
         
@@ -611,9 +600,8 @@ class ShadeMerger:
             )
         return raw_message
 
-
     def __parse_json_response(
-        self, content: str, pattern: str, default_res: dict = None
+            self, content: str, pattern: str, default_res: dict = None
     ) -> Any:
         """Parses JSON response from LLM output.
         
@@ -636,17 +624,31 @@ class ShadeMerger:
             return default_res
         return json_res
 
-
     def merge_shades(self, shade_info_list: List[ShadeMergeInfo]) -> ShadeMergeResponse:
         """Merges multiple shades based on their similarity.
-        
+
         Args:
             shade_info_list: List of shade information to be evaluated for merging.
-            
+
         Returns:
             ShadeMergeResponse object with merge results or error information.
         """
         try:
+            # 特殊处理：当只有一个shade时，直接返回该shade，不调用LLM进行合并决策
+            if len(shade_info_list) == 1:
+                shade = shade_info_list[0]
+                logger.info(f"Only one shade found, skipping LLM merge decision: {shade}")
+
+                shade_dict = shade.to_json()
+
+                if 'clusterInfo' in shade_dict:
+                    del shade_dict['clusterInfo']
+
+                final_merge_shade_list = [shade_dict]
+
+                result = {"mergeShadeList": final_merge_shade_list}
+                return ShadeMergeResponse(result=result, success=True)
+
             for shade in shade_info_list:
                 logger.info(f"shade: {shade}")
 
@@ -668,41 +670,34 @@ class ShadeMerger:
                     f"Failed to parse the shade merge list: {content}"
                 ) from e
 
-            # Validate if merge_shade_list is empty
             if not merge_shade_list:
                 final_merge_shade_list = []
             else:
-                # Calculate new cluster embeddings for each group of shades
+
                 final_merge_shade_list = []
                 for group in merge_shade_list:
-                    shade_ids = group  # Directly use group as it's now a list
+                    shade_ids = group
                     logger.info(f"Processing group with shadeIds: {shade_ids}")
                     if not shade_ids:
                         continue
 
-                    # Fetch shades based on shadeIds
                     shades = [
                         shade for shade in shade_info_list if str(shade.id) in shade_ids
-                    ]  # Ensure shade.id is string type
+                    ]
 
-                    # Skip current group if shades is empty
                     if not shades:
                         logger.info(
                             f"No valid shades found for shadeIds: {shade_ids}. Skipping this group."
                         )
                         continue
 
-                    # Calculate the new cluster embedding (center vector)
-                    new_cluster_embedd = self._calculate_merged_shades_center_embed(
-                        shades
-                    )
-                    logger.info(
-                        f"Calculated new cluster embedding: {new_cluster_embedd}"
-                    )
-
-                    final_merge_shade_list.append(
-                        {"shadeIds": shade_ids, "centerEmbedding": new_cluster_embedd}
-                    )
+                    shades_info = []
+                    for shade in shades:
+                        shade_dict = shade.to_json()
+                        if 'clusterInfo' in shade_dict:
+                            del shade_dict['clusterInfo']
+                        shades_info.append(shade_dict)
+                    final_merge_shade_list.extend(shades_info)
 
             result = {"mergeShadeList": final_merge_shade_list}
             response = ShadeMergeResponse(result=result, success=True)
@@ -712,3 +707,99 @@ class ShadeMerger:
             response = ShadeMergeResponse(result=str(e), success=False)
 
         return response
+
+    def gen_shades(self, clusters, notes_list: List[Note]):
+        shades = []
+        if clusters and "clusterList" in clusters:
+            for cluster in clusters.get("clusterList", []):
+                cluster_memory_ids = [
+                    str(m.get("memoryId")) for m in cluster.get("memoryList", [])
+                ]
+                logger.info(
+                    f"Processing cluster with {len(cluster_memory_ids)} memories"
+                )
+
+                cluster_notes = [
+                    note for note in notes_list if str(note.id) in cluster_memory_ids
+                ]
+                if cluster_notes:
+                    shade_generator = ShadeGenerator()
+                    shade = shade_generator.generate_shade(old_memory_list=[], new_memory_list=cluster_notes,
+                                                           shade_info_list=[])
+                    if shade:
+                        shades.append(shade)
+                        logger.info(
+                            f"Generated shade for cluster: {shade.name if hasattr(shade, 'name') else 'Unknown'}"
+                        )
+        return shades
+
+    def convert_from_shades_to_merge_info(self, shades: List[ShadeInfo]) -> List[ShadeMergeInfo]:
+        return [ShadeMergeInfo(
+            id=shade.id,
+            name=shade.name,
+            aspect=shade.aspect,
+            icon=shade.icon,
+            desc_third_view=shade.desc_third_view,
+            content_third_view=shade.content_third_view,
+            desc_second_view=shade.desc_second_view,
+            content_second_view=shade.content_second_view,
+            cluster_info=None
+        ) for shade in shades]
+
+    def generate_shades(self):
+
+        documents = document_service.list_documents_with_l0()
+        logger.info(f"Found {len(documents)} documents with L0 data")
+
+        notes_list, memory_list = extract_notes_from_documents(documents)
+
+        if not notes_list or not memory_list:
+            logger.error("No valid documents found for processing")
+            return
+
+        try:
+            clusters = l1_generator.gen_topics_for_shades(old_cluster_list=[], old_outlier_memory_list=[],
+                                                          new_memory_list=memory_list)
+            logger.info(f"Generated clusters: {bool(clusters)}")
+
+            chunk_topics = l1_generator.generate_topics(notes_list)
+            logger.info(f"Generated chunk topics: {bool(chunk_topics)}")
+            logger.info(f"chunk_topics content: {chunk_topics}")
+
+            shades = self.gen_shades(clusters, notes_list)
+            shades_merge_infos = self.convert_from_shades_to_merge_info(shades)
+            merged_shades = self.merge_shades(shades_merge_infos)
+            logger.info(f"Merged shades success: {merged_shades.success}")
+            logger.info(
+                f"Number of merged shades: {len(merged_shades.merge_shade_list) if merged_shades.success else 0}"
+            )
+
+            bio = l1_generator.gen_global_biography(
+                old_profile=Bio(
+                    shadesList=merged_shades.merge_shade_list
+                    if merged_shades.success
+                    else []
+                ),
+                cluster_list=clusters.get("clusterList", []),
+            )
+            logger.info(f"Generated global biography: {bio}")
+
+            with DatabaseSession.session() as session:
+                new_version = session.query(L1Shade).order_by(
+                    L1Shade.version.desc()).first().version + 1 if session.query(L1Shade).order_by(
+                    L1Shade.version.desc()).first() else 1
+                store_version(session, new_version)
+                store_clusters(session, new_version, clusters.get("clusterList", []))
+                store_shades(session, new_version, merged_shades.merge_shade_list)
+                store_bio(session, new_version, bio)
+
+            return merged_shades
+
+        except Exception as e:
+            logger.error(f"Error while generating shades: {e}")
+            return
+
+
+if __name__ == "__main__":
+    shades_generator = ShadeMerger()
+    shades_generator.generate_shades()

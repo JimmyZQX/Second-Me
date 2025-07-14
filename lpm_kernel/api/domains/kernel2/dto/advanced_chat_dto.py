@@ -13,7 +13,7 @@ class AdvancedChatRequest(BaseModel):
     max_iterations: int = Field(default=3, description="Maximum number of refinement iterations")
     temperature: float = Field(default=0.7, description="Temperature for model generation")
     enable_l0_retrieval: bool = Field(default=True, description="Whether to enable L0 knowledge retrieval")
-    enable_l1_retrieval: bool = Field(default=True, description="Whether to enable L1 knowledge retrieval")
+    enable_l1_retrieval: bool = Field(default=True, description="Whether to enable stage2 knowledge retrieval")
 
 
 class ValidationResult(BaseModel):

@@ -3,8 +3,8 @@ from typing import List, Optional
 
 import numpy as np
 
-from lpm_kernel.L1.bio import Note, Chunk, Bio, ShadeInfo, ShadeMergeInfo
-from lpm_kernel.L1.l1_generator import L1Generator
+from lpm_kernel.stage2.bio import Note, Chunk, Bio, ShadeInfo, ShadeMergeInfo
+from lpm_kernel.stage2.l1_generator import L1Generator
 from lpm_kernel.common.repository.database_session import DatabaseSession
 from lpm_kernel.file_data.document_service import document_service
 from lpm_kernel.models.l1 import L1Bio
@@ -75,7 +75,7 @@ def extract_notes_from_documents(documents) -> tuple[List[Note], list]:
             embedding=np.array(doc_embedding),
             chunks=[
                 Chunk(
-                    id=f"{chunk.id}",
+                    id=chunk.id,
                     document_id=doc_id,
                     content=chunk.content,
                     embedding=np.array(all_chunk_embeddings.get(chunk.id))
@@ -99,7 +99,7 @@ def extract_notes_from_documents(documents) -> tuple[List[Note], list]:
 
 
 def generate_l1_from_l0() -> L1GenerationResult:
-    """Generate L1 level knowledge representation from L0 data"""
+    """Generate stage2 level knowledge representation from L0 data"""
     l1_generator = L1Generator()
 
     # 1. Prepare data
@@ -114,7 +114,7 @@ def generate_l1_from_l0() -> L1GenerationResult:
         return None
 
     try:
-        # 3. Generate L1 data
+        # 3. Generate stage2 data
         # 3.1 Generate topics
         clusters = l1_generator.gen_topics_for_shades(
             old_cluster_list=[], old_outlier_memory_list=[], new_memory_list=memory_list
@@ -155,11 +155,11 @@ def generate_l1_from_l0() -> L1GenerationResult:
             bio=bio, clusters=clusters, chunk_topics=chunk_topics
         )
 
-        logger.info("L1 generation completed successfully")
+        logger.info("stage2 generation completed successfully")
         return result
 
     except Exception as e:
-        logger.error(f"Error in L1 generation: {str(e)}", exc_info=True)
+        logger.error(f"Error in stage2 generation: {str(e)}", exc_info=True)
         raise
 
 
@@ -178,7 +178,7 @@ def generate_shades(clusters, l1_generator, notes_list):
                 note for note in notes_list if str(note.id) in cluster_memory_ids
             ]
             if cluster_notes:
-                shade = l1_generator.gen_shade_for_cluster([], cluster_notes, [])
+                shade = ShadesGenerator.gen_shade_for_cluster([], cluster_notes, [])
                 if shade:
                     shades.append(shade)
                     logger.info(
@@ -259,7 +259,7 @@ def get_latest_global_bio() -> Optional[GlobalBioDTO]:
     """
     try:
         with DatabaseSession.session() as session:
-            # Get the latest version of L1 data
+            # Get the latest version of stage2 data
             latest_version = (
                 session.query(L1Version).order_by(L1Version.version.desc()).first()
             )

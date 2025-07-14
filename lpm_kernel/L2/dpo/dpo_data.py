@@ -435,7 +435,7 @@ class DPOData:
 
 # Example usage
 if __name__ == "__main__":
-    input_path = 'resources/L2/data/merged.json'
+    input_path = 'resources/data/merged.json'
     output_dir = 'resources/L2/data/dpo/'
     dpo_data = DPOData(input_path, output_dir,preference_language)
     dpo_data.run()

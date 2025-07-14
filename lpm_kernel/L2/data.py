@@ -19,7 +19,7 @@ from datetime import datetime
 from tqdm import tqdm
 from typing import Any, Dict, List
 
-from lpm_kernel.L1.bio import (
+from lpm_kernel.stage2.bio import (
     MemoryType,
     Note,
     OBJECT_NOTE_TYPE,
@@ -81,22 +81,22 @@ class L2DataProcessor:
         )
 
         subjective_notes_remade = self.refine_notes_data_subjective(
-            subjective_memory_notes, user_info, self.data_path + "/L1/processed_data/subjective/note_remade.json"
+            subjective_memory_notes, user_info, self.data_path + "/stage2/processed_data/subjective/note_remade.json"
         )
 
         objective_notes_remade = self.refine_notes_data_objective(
-            objective_memory_notes, user_info, self.data_path + "/L1/processed_data/objective/note_remade.json"
+            objective_memory_notes, user_info, self.data_path + "/stage2/processed_data/objective/note_remade.json"
         )
 
         self.json_to_txt_each(
             subjective_notes_remade,
-            self.data_path + "/L1/processed_data/subjective",
+            self.data_path + "/stage2/processed_data/subjective",
             file_type="note",
         )
 
         self.json_to_txt_each(
             objective_notes_remade,
-            self.data_path + "/L1/processed_data/objective",
+            self.data_path + "/stage2/processed_data/objective",
             file_type="note",
         )
 
@@ -107,16 +107,16 @@ class L2DataProcessor:
         if len(subjective_notes_remade) > 0:
             self.graphrag_indexing(
                 subjective_notes_remade,
-                self.data_path + "/L1/processed_data/subjective",
-                self.data_path + "/L1/graphrag_indexing_output/subjective",
+                self.data_path + "/stage2/processed_data/subjective",
+                self.data_path + "/stage2/graphrag_indexing_output/subjective",
                 lang,
             )
 
         if len(objective_notes_remade) > 0:
             self.graphrag_indexing(
                 objective_notes_remade,
-                self.data_path + "/L1/processed_data/objective",
-                self.data_path + "/L1/graphrag_indexing_output/objective",
+                self.data_path + "/stage2/processed_data/objective",
+                self.data_path + "/stage2/graphrag_indexing_output/objective",
                 lang,
             )
         return

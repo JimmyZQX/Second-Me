@@ -1,5 +1,5 @@
 from typing import List
-from lpm_kernel.L1.bio import Chunk
+from lpm_kernel.stage2.bio import Chunk
 import traceback
 import time
 from langchain.text_splitter import RecursiveCharacterTextSplitter

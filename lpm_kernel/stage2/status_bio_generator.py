@@ -1,14 +1,14 @@
-from typing import Dict, List, Optional, Union, Any
-import logging
+from typing import Dict, List, Any
 
 from openai import OpenAI
 
-from lpm_kernel.L1.bio import Bio, Chat, Note, Todo, UserInfo
-from lpm_kernel.L1.prompt import PREFER_LANGUAGE_SYSTEM_PROMPT, STATUS_BIO_SYSTEM_PROMPT
-from lpm_kernel.L1.utils import get_cur_time, is_valid_chat, is_valid_note, is_valid_todo
 from lpm_kernel.api.services.user_llm_config_service import UserLLMConfigService
-from lpm_kernel.configs.config import Config
+from lpm_kernel.base.database_operate import extract_notes_from_documents
 from lpm_kernel.configs.logging import get_train_process_logger
+from lpm_kernel.file_data.document_service import document_service
+from lpm_kernel.stage2.bio import Bio, Chat, Note, Todo, UserInfo
+from lpm_kernel.stage2.prompt import PREFER_LANGUAGE_SYSTEM_PROMPT, STATUS_BIO_SYSTEM_PROMPT
+from lpm_kernel.stage2.utils import get_cur_time
 
 logger = get_train_process_logger()
 
@@ -87,7 +87,7 @@ class StatusBioGenerator:
         except Exception as e:
             error_msg = str(e)
             logger.error(f"API Error: {error_msg}")
-            
+
             # Try to fix top_p parameter if needed
             if hasattr(e, 'response') and hasattr(e.response, 'status_code') and e.response.status_code == 400:
                 if self._fix_top_p_param(error_msg):
@@ -98,7 +98,7 @@ class StatusBioGenerator:
                         **self.model_params,
                         **kwargs
                     )
-            
+
             # Re-raise the exception
             raise
 
@@ -127,9 +127,8 @@ class StatusBioGenerator:
 
         return messages
 
-
-    def generate_status_bio(self, notes: List[Note], todos: List[Todo], 
-                           chats: List[Chat]) -> Bio:
+    def generate_status_bio(self, notes: List[Note], todos: List[Todo],
+                            chats: List[Chat]) -> Bio:
         """Generate a status biography based on user's notes, todos, and chats.
 
         Args:
@@ -158,3 +157,36 @@ class StatusBioGenerator:
             attributeList=[],
             shadesList=[],
         )
+
+    def gener_status_bio(self) -> Bio | None:
+        """Generate status biography
+
+            Returns:
+                Bio: Generated status biography
+            """
+        try:
+            # 1. Get all documents and extract notes
+            documents = document_service.list_documents_with_l0()
+            notes_list, _ = extract_notes_from_documents(documents)
+
+            if not notes_list:
+                logger.error("No valid notes found for status bio generation")
+                return None
+
+            status_bio = self.generate_status_bio(
+                notes=notes_list,
+                todos=[],  # Empty for now
+                chats=[],  # Empty for now
+            )
+
+            logger.info("Status biography generated successfully")
+
+
+
+        except Exception as e:
+            logger.error(f"Error generating status bio: {str(e)}", exc_info=True)
+            raise
+
+if __name__ == "__main__":
+    status_bio_generator = StatusBioGenerator()
+    status_bio_generator.gener_status_bio()
