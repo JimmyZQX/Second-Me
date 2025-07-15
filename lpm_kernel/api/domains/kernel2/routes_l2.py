@@ -1077,3 +1077,39 @@ def check_cuda_available():
         error_msg = f"Error checking CUDA availability: {str(e)}"
         logger.error(error_msg)
         return jsonify(APIResponse.error(message=error_msg, code=500))
+
+
+@kernel2_bp.route("/model/download_filter", methods=["POST"])
+def downloadFilterModel():
+    """Download a filter model (e.g., Ollama model like gemma:2b)
+    Request body:
+    {
+        "model_name": str  # e.g. "gemma:2b"
+    }
+    Returns:
+    {
+        "code": int,
+        "message": str,
+        "data": {
+            "model_path": str  # Model name or path
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        if not data or "model_name" not in data:
+            return jsonify(APIResponse.error(message="Missing required parameter: model_name", code=400))
+
+        model_name = data["model_name"]
+        # 直接调用save_ollama_model
+        from lpm_kernel.L2.utils import save_ollama_model
+        model_path = save_ollama_model(model_name)
+
+        return jsonify(APIResponse.success(
+            data={"model_path": model_path},
+            message="Ollama model download completed"
+        ))
+    except Exception as e:
+        error_msg = f"Failed to download Ollama model: {str(e)}"
+        logger.error(error_msg)
+        return jsonify(APIResponse.error(message=error_msg, code=500))
