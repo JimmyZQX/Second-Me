@@ -147,6 +147,10 @@ def downloadModel():
         # Download and save model
         model_path = save_hf_model(model_name)
 
+        # Temporarily download ollama model here, will use the other function later
+        # from lpm_kernel.L2.utils import save_ollama_model
+        # filter_model_path = save_ollama_model("gemma3n:e2b")
+
         return jsonify(APIResponse.success(
             data={"model_path": model_path},
             message="Model download completed"
@@ -301,6 +305,9 @@ def all():
                 graph_path,
                 config_path,
             )
+
+            # Filter subjective data
+            l2_generator.filter_subjective_data(data_output_base_dir, model_name="gpt-4o", user_bio=basic_info["globalBio"], api_key="your_api_key")
 
             # 8. Complete (100%)
             progress_data = {

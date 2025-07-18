@@ -110,9 +110,6 @@ class L2Generator:
         # Merge JSON files for training
         self.merge_json_files(data_output_base_dir)
         
-        # Filter the merged data using ChatGPT
-        self.filter_merged_data(data_output_base_dir)
-        
         # Release Ollama models from memory after data synthesis is complete
         self._release_ollama_models()
 
@@ -209,8 +206,8 @@ class L2Generator:
         with open(merged_output_path, 'w', encoding='utf-8') as f:
             json.dump(merged_data, f, ensure_ascii=False, indent=2)
     
-    def filter_merged_data(self, data_output_base_dir: str):
-        """Filter the merged.json data using ChatGPT to improve quality.
+    def filter_subjective_data(self, data_output_base_dir: str, model_name: str=None, user_bio: str=None, api_key: str=None):
+        """Filter the merged.json data using ChatGPT or Ollamato improve quality.
         
         Args:
             data_output_base_dir: Directory containing the merged.json file
@@ -224,26 +221,15 @@ class L2Generator:
         try:
             # Import your judge class
             from lpm_kernel.L2.merged_data_judge import MergedDataJudge
-            
-            
+
             logging.info(f"Starting data filtering")
             
             # Get user bio for filtering context - you can customize this
             user_bio = "User is a software engineer who loves programming and learning new technologies."
             
-            # Initialize the judge with API key from user configuration
-            from lpm_kernel.api.services.user_llm_config_service import UserLLMConfigService
-            user_llm_config_service = UserLLMConfigService()
-            user_llm_config = user_llm_config_service.get_available_llm()
+            api_key = "Your api key here, WIP, will ask user to input at UI"
             
-            if not user_llm_config or not user_llm_config.chat_api_key:
-                logging.warning("OpenAI API key not found in user configuration, skipping data filtering")
-                logging.info("To enable data filtering, please configure your API key in the UI settings")
-                return
-            
-            api_key = user_llm_config.chat_api_key
-            
-            judge = MergedDataJudge(api_key=api_key, model_name="gpt-4o")
+            judge = MergedDataJudge(api_key=api_key, model_name=model_name, user_bio=user_bio)
 
             # Keeping a different output path just for debugging
             # output_path = "resources/L2/data/merged_judge_report.json"
