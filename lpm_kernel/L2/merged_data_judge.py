@@ -217,7 +217,7 @@ class MergedDataJudge:
                         
                         # Add scoring fields to the original item
                         item['score'] = result.score
-                        item['reasoning'] = result.reasoning
+                        # item['reasoning'] = result.reasoning
                         # item['quality_level'] = result.quality_level
                         # item['suggestions'] = result.suggestions
                         
@@ -262,12 +262,19 @@ class MergedDataJudge:
             #     quality_counts[quality] = quality_counts.get(quality, 0) + 1
             # print(f"  Quality distribution of kept items: {quality_counts}")
         
+        # Clean the filtered data by removing score field before saving
+        print("Cleaning filtered data by removing score field...")
+        for item in filtered_data:
+            if 'score' in item:
+                del item['score']
+        
         # Save the filtered data back to the original file
         try:
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(filtered_data, f, ensure_ascii=False, indent=2)
             
             print(f"Filtered data saved to {output_path}")
+            print("✅ Score field removed from final output - clean data ready for local/cloud training")
         except Exception as e:
             print(f"❌ Error saving filtered data: {str(e)}")
             print("Keeping original file unchanged and skipping data filtering")
